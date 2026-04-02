@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Platform, StatusBar as RNStatusBar } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar, Image, Button, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import Task from './src/components/Task';
+import TaskList from './src/components/TaskList';
 import { addTask, deleteTask, getAllTasks, updateTask, TaskItem } from './src/utils/handle-api';
 
 export default function App() {
@@ -9,9 +9,10 @@ export default function App() {
   const [text, setText] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [taskId, setTaskId] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAllTasks(setTasks);
+    getAllTasks(setTasks, setLoading);
   }, []);
 
   const updateMode = (_id: string, text: string) => {
@@ -23,13 +24,24 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.header}>Tarefas</Text>
+        <View style={styles.headerContainer}>
+          <Image 
+            source={require('./assets/task-app-banner.png')} 
+            style={styles.logo} 
+          />
+          <Text style={styles.header}>Tarefas</Text>
+        </View>
+
+        <View style={styles.counterContainer}>
+          <Text style={styles.counterText}>Total de Tarefas: {tasks.length}</Text>
+        </View>
 
         <View style={styles.top}>
           <TextInput
             style={styles.input}
             placeholder="Adicione uma tarefa..."
             value={text}
+            maxLength={50}
             onChangeText={(val) => setText(val)}
           />
 
@@ -47,16 +59,23 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-          {tasks.map((item) => (
-            <Task
-              key={item._id}
-              text={item.text}
-              updateMode={() => updateMode(item._id, item.text)}
-              deleteToDo={() => deleteTask(item._id, setTasks)}
-            />
-          ))}
-        </ScrollView>
+        <View style={styles.nativeButtonContainer}>
+          <Button 
+            title="Excluir todas as tarefas" 
+            color="#d9534f" 
+            onPress={() => setTasks([])} 
+          />
+        </View>
+
+        <TaskList 
+          tasks={tasks} 
+          onUpdate={updateMode} 
+          onDelete={(id) => deleteTask(id, setTasks)} 
+        />
+
+        {loading && (
+          <ActivityIndicator size="large" color="#000" style={styles.loader} />
+        )}
       </View>
       <StatusBar style="auto" />
     </SafeAreaView>
@@ -76,11 +95,29 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingHorizontal: 16,
   },
-  header: {
+  headerContainer: {
+    alignItems: 'center',
     marginTop: 16,
+  },
+  logo: {
+    width: 60,
+    height: 60,
+    marginBottom: 8,
+  },
+  header: {
     textAlign: 'center',
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  counterContainer: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  counterText: {
+    fontSize: 16,
+    color: '#666',
   },
   top: {
     marginTop: 16,
@@ -110,11 +147,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  list: {
+  nativeButtonContainer: {
     marginTop: 16,
-    flex: 1,
   },
-  listContent: {
-    paddingBottom: 24,
+  loader: {
+    marginTop: 16,
   }
 });

@@ -8,10 +8,15 @@ export interface TaskItem {
   text: string;
 }
 
-export const getAllTasks = (setTasks: React.Dispatch<React.SetStateAction<TaskItem[]>>) => {
+export const getAllTasks = (setTasks: React.Dispatch<React.SetStateAction<TaskItem[]>>, setLoading?: React.Dispatch<React.SetStateAction<boolean>>) => {
+  if (setLoading) setLoading(true);
   axios.get<TaskItem[]>(`${baseURL}`).then(({ data }) => {
     setTasks(data);
-  }).catch((err) => console.log(err));
+    if (setLoading) setLoading(false);
+  }).catch((err) => {
+    console.log(err);
+    if (setLoading) setLoading(false);
+  });
 };
 
 export const addTask = (
