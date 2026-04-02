@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React from 'react';
 
-const baseURL = 'https://todo-app-express-backend-rtbt.onrender.com';
+const baseURL = process.env.EXPO_PUBLIC_API_URL;
 
 export interface TaskItem {
   _id: string;
