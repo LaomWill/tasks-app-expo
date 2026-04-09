@@ -10,15 +10,21 @@ interface TaskItemProps {
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, updateMode, deleteTask }) => {
+  const isOverdue = task.dueDate ? new Date(task.dueDate) < new Date() : false;
+
   return (
     <View style={styles.task}>
       <View style={styles.contentContainer}>
         <Text style={[styles.text, !!task.completed && styles.textCompleted]}>
           {task.text}
         </Text>
+        
         {task.dueDate && (
-          <Text style={styles.dateText}>
-            Até: {new Date(task.dueDate).toLocaleDateString()}
+          <Text style={[
+            styles.dateText,
+            isOverdue ? styles.overdue : styles.onTime
+          ]}>
+            Até: {new Date(task.dueDate).toLocaleDateString('pt-BR')}
           </Text>
         )}
       </View>
@@ -58,9 +64,15 @@ const styles = StyleSheet.create({
     color: '#aaa',
   },
   dateText: {
-    color: '#bbb',
     fontSize: 12,
     marginTop: 4,
+    fontWeight: '600',
+  },
+  overdue: {
+    color: '#e53935',
+  },
+  onTime: {
+    color: '#43a047',
   },
   icons: {
     flexDirection: 'row',
