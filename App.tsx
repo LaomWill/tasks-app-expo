@@ -1,9 +1,25 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, SafeAreaView, Platform, StatusBar as RNStatusBar, Image, Pressable, ActivityIndicator, Modal } from 'react-native';
+import { useEffect, useState, useMemo } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TextInput, 
+  TouchableOpacity, 
+  SafeAreaView, 
+  Platform, 
+  StatusBar as RNStatusBar, 
+  Image, 
+  Pressable, 
+  ActivityIndicator, 
+  Modal,
+  Button
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Checkbox from 'expo-checkbox';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import TaskList from './src/components/TaskList';
+import AboutScreen from './src/components/AboutScreen';
+import { globalStyles } from './src/styles/global';
 import { addTask, deleteTask, getAllTasks, updateTask, TaskItem } from './src/utils/handle-api';
 
 export default function App() {
@@ -17,10 +33,23 @@ export default function App() {
   const [completed, setCompleted] = useState(false);
   const [dueDate, setDueDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  const [logoError, setLogoError] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'completed' | 'pending'>('all');
+  const [priority, setPriority] = useState<'Baixa' | 'Média' | 'Alta'>('Média');
+  const [aboutVisible, setAboutVisible] = useState(false);
 
   useEffect(() => {
     getAllTasks(setTasks, setLoading);
   }, []);
+
+  const filteredTasks = useMemo(() => {
+    switch (filter) {
+      case 'completed': return tasks.filter(t => !!t.completed);
+      case 'pending': return tasks.filter(t => !t.completed);
+      default: return tasks;
+    }
+  }, [tasks, filter]);
 
   const resetForm = () => {
     setText("");
@@ -28,6 +57,7 @@ export default function App() {
     setDueDate(null);
     setIsUpdating(false);
     setTaskId("");
+    setPriority('Média');
     setModalVisible(false);
   };
 
@@ -55,18 +85,45 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, globalStyles.backgroundColor]}>
       <View style={styles.container}>
+        
         <View style={styles.headerContainer}>
-          <Image 
-            source={require('./assets/task-app-banner.png')} 
-            style={styles.logo} 
-          />
-          <Text style={styles.header}>Tarefas</Text>
+          {!logoError ? (
+            <Image 
+              source={require('./assets/task-app-banner.png')} 
+              style={styles.logo} 
+              onError={() => setLogoError(true)}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={[styles.header, globalStyles.primaryColor]}>Gerenciador de Tarefas</Text>
+          )}
+          <Text style={styles.header}>Minhas Tarefas</Text>
         </View>
 
         <View style={styles.counterContainer}>
           <Text style={styles.counterText}>Total de Tarefas: {tasks.length}</Text>
+        </View>
+
+        <View style={styles.filterContainer}>
+          {(['all', 'completed', 'pending'] as const).map((f) => (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setFilter(f)}
+              style={[
+                styles.filterButton,
+                filter === f ? styles.filterButtonActive : styles.filterButtonInactive
+              ]}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                filter === f ? styles.filterButtonTextActive : styles.filterButtonTextInactive
+              ]}>
+                {f === 'all' ? 'Todas' : f === 'completed' ? 'Concluídas' : 'Pendentes'}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <View style={styles.actionButtonsContainer}>
@@ -93,17 +150,22 @@ export default function App() {
           </Pressable>
         </View>
 
-        <TaskList 
-          tasks={tasks} 
-          onUpdate={updateMode} 
-          onDelete={(id) => deleteTask(id, setTasks)} 
-        />
-
-        {loading && (
+        {loading ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#000" />
+            <Text style={[globalStyles.bodyFontSize, { marginTop: 10 }]}>Carregando...</Text>
           </View>
+        ) : (
+          <TaskList 
+            tasks={filteredTasks} 
+            onUpdate={updateMode} 
+            onDelete={(id) => deleteTask(id, setTasks)} 
+          />
         )}
+
+        <View style={styles.footer}>
+          <Button title="Sobre o App" onPress={() => setAboutVisible(true)} color="#000" />
+        </View>
       </View>
 
       <Modal
@@ -123,6 +185,25 @@ export default function App() {
               maxLength={50}
               onChangeText={setText}
             />
+
+            <Text style={styles.fieldLabel}>Prioridade:</Text>
+            <View style={styles.priorityContainer}>
+              {(['Baixa', 'Média', 'Alta'] as const).map((p) => (
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => setPriority(p)}
+                  style={[
+                    styles.priorityButton,
+                    priority === p && { 
+                      backgroundColor: p === 'Alta' ? '#ff5252' : p === 'Média' ? '#ffb142' : '#33d9b2',
+                      borderColor: 'transparent'
+                    }
+                  ]}
+                >
+                  <Text style={[styles.priorityText, priority === p && { color: '#fff' }]}>{p}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
 
             <View style={styles.fieldRow}>
               <Text style={styles.fieldLabel}>Data limite:</Text>
@@ -186,6 +267,8 @@ export default function App() {
         </View>
       </Modal>
 
+      <AboutScreen visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+
       <StatusBar style="auto" />
     </SafeAreaView>
   );
@@ -194,7 +277,6 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
     paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight : 0,
   },
   container: {
@@ -209,7 +291,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   logo: {
-    width: 60,
+    width: '100%',
     height: 60,
     marginBottom: 8,
   },
@@ -227,6 +309,36 @@ const styles = StyleSheet.create({
   counterText: {
     fontSize: 16,
     color: '#666',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    gap: 8,
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 4,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  filterButtonActive: {
+    backgroundColor: '#000',
+    borderColor: '#000',
+  },
+  filterButtonInactive: {
+    backgroundColor: 'transparent',
+    borderColor: '#000',
+  },
+  filterButtonText: {
+    fontWeight: '600',
+  },
+  filterButtonTextActive: {
+    color: '#fff',
+  },
+  filterButtonTextInactive: {
+    color: '#000',
   },
   actionButtonsContainer: {
     flexDirection: 'row',
@@ -273,15 +385,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
   },
   loaderContainer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    zIndex: 10,
+  },
+  footer: {
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   modalOverlay: {
     flex: 1,
@@ -324,6 +435,25 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 8,
+  },
+  priorityButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+  },
+  priorityText: {
+    fontWeight: '600',
+    fontSize: 12,
   },
   checkboxContainer: {
     marginLeft: 16,
